@@ -32,7 +32,7 @@ impl Bridge {
     /// Run the bridge
     pub async fn run(self) -> Result<()> {
         // Start MQTT publisher if configured
-        let mqtt_publisher = if !self.config.mqtt.host.is_empty() {
+        let _mqtt_publisher = if !self.config.mqtt.host.is_empty() {
             Some(MqttPublisher::new(&self.config.mqtt).await?)
         } else {
             None

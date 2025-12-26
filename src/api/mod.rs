@@ -9,7 +9,7 @@ use axum::{
 };
 use serde::Serialize;
 use std::sync::Arc;
-use tracing::info;
+// tracing will be used for logging in future versions
 
 use crate::modbus::reader::RegisterStore;
 

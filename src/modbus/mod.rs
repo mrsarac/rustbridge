@@ -2,10 +2,10 @@
 //!
 //! Supports both TCP and RTU connections
 
-use anyhow::{Context, Result};
+use anyhow::{Context as AnyhowContext, Result};
 use std::net::SocketAddr;
 use tokio_modbus::prelude::*;
-use tracing::{debug, error, info};
+use tracing::{debug, info};
 
 use crate::config::{ConnectionConfig, DeviceConfig, RegisterConfig, RegisterType};
 
@@ -59,19 +59,27 @@ impl ModbusClient {
             RegisterType::Holding => {
                 debug!("Reading {} holding registers from address {}",
                        register.count, register.address);
-                ctx.read_holding_registers(register.address, register.count).await?
+                ctx.read_holding_registers(register.address, register.count)
+                    .await
+                    .map_err(|e| anyhow::anyhow!("Modbus error: {}", e))?
             }
             RegisterType::Input => {
                 debug!("Reading {} input registers from address {}",
                        register.count, register.address);
-                ctx.read_input_registers(register.address, register.count).await?
+                ctx.read_input_registers(register.address, register.count)
+                    .await
+                    .map_err(|e| anyhow::anyhow!("Modbus error: {}", e))?
             }
             RegisterType::Coil => {
-                let coils = ctx.read_coils(register.address, register.count).await?;
+                let coils = ctx.read_coils(register.address, register.count)
+                    .await
+                    .map_err(|e| anyhow::anyhow!("Modbus error: {}", e))?;
                 coils.iter().map(|&b| if b { 1u16 } else { 0u16 }).collect()
             }
             RegisterType::Discrete => {
-                let inputs = ctx.read_discrete_inputs(register.address, register.count).await?;
+                let inputs = ctx.read_discrete_inputs(register.address, register.count)
+                    .await
+                    .map_err(|e| anyhow::anyhow!("Modbus error: {}", e))?;
                 inputs.iter().map(|&b| if b { 1u16 } else { 0u16 }).collect()
             }
         };
@@ -84,7 +92,10 @@ impl ModbusClient {
         let ctx = self.context.as_mut()
             .ok_or_else(|| anyhow::anyhow!("No connection available"))?;
 
-        ctx.write_single_register(address, value).await?;
+        ctx.write_single_register(address, value)
+            .await
+            .map_err(|e| anyhow::anyhow!("Modbus write error: {}", e))?;
+
         info!("Wrote value {} to register {} on device {}",
               value, address, self.device_id);
 
