@@ -53,12 +53,19 @@ metrics-exporter-prometheus = "0.15"
 [dev-dependencies]
 tokio-test = "0.4"
 mockall = "0.13"
+tower = { version = "0.5", features = ["util"] }
+tempfile = "3.10"
+http-body-util = "0.1"
 
 [profile.release]
 lto = true
 codegen-units = 1
 panic = "abort"
 strip = true
+
+[lib]
+name = "rustbridge"
+path = "src/lib.rs"
 
 [[bin]]
 name = "rustbridge"

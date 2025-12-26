@@ -179,3 +179,318 @@ pub fn load_config() -> Result<Config> {
         Ok(Config::default())
     }
 }
+
+/// Load configuration from a YAML string
+pub fn load_config_from_str(yaml: &str) -> Result<Config> {
+    serde_yaml::from_str(yaml).with_context(|| "Failed to parse config")
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_default_config() {
+        let config = Config::default();
+
+        assert_eq!(config.server.host, "0.0.0.0");
+        assert_eq!(config.server.port, 3000);
+        assert!(config.server.metrics_enabled);
+        assert_eq!(config.mqtt.host, "localhost");
+        assert_eq!(config.mqtt.port, 1883);
+        assert_eq!(config.mqtt.qos, 1);
+        assert!(config.devices.is_empty());
+    }
+
+    #[test]
+    fn test_parse_minimal_config() {
+        let yaml = r#"
+server:
+  host: "127.0.0.1"
+  port: 8080
+  metrics_enabled: false
+mqtt:
+  host: "mqtt.example.com"
+  port: 1883
+  client_id: "test-client"
+  topic_prefix: "test"
+  qos: 2
+devices: []
+"#;
+        let config = load_config_from_str(yaml).unwrap();
+
+        assert_eq!(config.server.host, "127.0.0.1");
+        assert_eq!(config.server.port, 8080);
+        assert!(!config.server.metrics_enabled);
+        assert_eq!(config.mqtt.host, "mqtt.example.com");
+        assert_eq!(config.mqtt.qos, 2);
+    }
+
+    #[test]
+    fn test_parse_tcp_device() {
+        let yaml = r#"
+server:
+  host: "0.0.0.0"
+  port: 3000
+  metrics_enabled: true
+mqtt:
+  host: "localhost"
+  port: 1883
+  client_id: "rustbridge"
+  topic_prefix: "rustbridge"
+  qos: 1
+devices:
+  - id: "plc-001"
+    name: "Test PLC"
+    device_type: tcp
+    connection:
+      host: "192.168.1.100"
+      port: 502
+      unit_id: 1
+    poll_interval_ms: 1000
+    registers:
+      - name: "temperature"
+        address: 0
+        register_type: holding
+        count: 1
+        data_type: i16
+        unit: "°C"
+        scale: 0.1
+"#;
+        let config = load_config_from_str(yaml).unwrap();
+
+        assert_eq!(config.devices.len(), 1);
+        let device = &config.devices[0];
+        assert_eq!(device.id, "plc-001");
+        assert_eq!(device.name, "Test PLC");
+        assert_eq!(device.poll_interval_ms, 1000);
+
+        match &device.connection {
+            ConnectionConfig::Tcp(tcp) => {
+                assert_eq!(tcp.host, "192.168.1.100");
+                assert_eq!(tcp.port, 502);
+                assert_eq!(tcp.unit_id, 1);
+            }
+            _ => panic!("Expected TCP connection"),
+        }
+
+        assert_eq!(device.registers.len(), 1);
+        let reg = &device.registers[0];
+        assert_eq!(reg.name, "temperature");
+        assert_eq!(reg.address, 0);
+        assert_eq!(reg.scale, Some(0.1));
+        assert_eq!(reg.unit, Some("°C".to_string()));
+    }
+
+    #[test]
+    fn test_parse_rtu_device() {
+        let yaml = r#"
+server:
+  host: "0.0.0.0"
+  port: 3000
+  metrics_enabled: true
+mqtt:
+  host: ""
+  port: 1883
+  client_id: "rustbridge"
+  topic_prefix: "rustbridge"
+  qos: 1
+devices:
+  - id: "sensor-001"
+    name: "RTU Sensor"
+    device_type: rtu
+    connection:
+      port: "/dev/ttyUSB0"
+      baud_rate: 9600
+      data_bits: 8
+      stop_bits: 1
+      parity: "none"
+      unit_id: 1
+    poll_interval_ms: 500
+    registers:
+      - name: "humidity"
+        address: 100
+        register_type: input
+        count: 1
+        data_type: u16
+        unit: "%"
+"#;
+        let config = load_config_from_str(yaml).unwrap();
+
+        assert_eq!(config.devices.len(), 1);
+        let device = &config.devices[0];
+
+        match &device.connection {
+            ConnectionConfig::Rtu(rtu) => {
+                assert_eq!(rtu.port, "/dev/ttyUSB0");
+                assert_eq!(rtu.baud_rate, 9600);
+                assert_eq!(rtu.data_bits, 8);
+                assert_eq!(rtu.parity, "none");
+            }
+            _ => panic!("Expected RTU connection"),
+        }
+    }
+
+    #[test]
+    fn test_all_register_types() {
+        let yaml = r#"
+server:
+  host: "0.0.0.0"
+  port: 3000
+  metrics_enabled: true
+mqtt:
+  host: ""
+  port: 1883
+  client_id: "rustbridge"
+  topic_prefix: "rustbridge"
+  qos: 1
+devices:
+  - id: "test"
+    name: "Test"
+    device_type: tcp
+    connection:
+      host: "localhost"
+      port: 502
+      unit_id: 1
+    poll_interval_ms: 1000
+    registers:
+      - name: "holding_reg"
+        address: 0
+        register_type: holding
+        count: 1
+        data_type: u16
+      - name: "input_reg"
+        address: 10
+        register_type: input
+        count: 1
+        data_type: i16
+      - name: "coil_reg"
+        address: 20
+        register_type: coil
+        count: 1
+        data_type: bool
+      - name: "discrete_reg"
+        address: 30
+        register_type: discrete
+        count: 1
+        data_type: bool
+"#;
+        let config = load_config_from_str(yaml).unwrap();
+
+        let regs = &config.devices[0].registers;
+        assert_eq!(regs.len(), 4);
+
+        assert!(matches!(regs[0].register_type, RegisterType::Holding));
+        assert!(matches!(regs[1].register_type, RegisterType::Input));
+        assert!(matches!(regs[2].register_type, RegisterType::Coil));
+        assert!(matches!(regs[3].register_type, RegisterType::Discrete));
+    }
+
+    #[test]
+    fn test_all_data_types() {
+        let yaml = r#"
+server:
+  host: "0.0.0.0"
+  port: 3000
+  metrics_enabled: true
+mqtt:
+  host: ""
+  port: 1883
+  client_id: "rustbridge"
+  topic_prefix: "rustbridge"
+  qos: 1
+devices:
+  - id: "test"
+    name: "Test"
+    device_type: tcp
+    connection:
+      host: "localhost"
+      port: 502
+      unit_id: 1
+    poll_interval_ms: 1000
+    registers:
+      - name: "u16_val"
+        address: 0
+        register_type: holding
+        count: 1
+        data_type: u16
+      - name: "i16_val"
+        address: 1
+        register_type: holding
+        count: 1
+        data_type: i16
+      - name: "u32_val"
+        address: 2
+        register_type: holding
+        count: 2
+        data_type: u32
+      - name: "i32_val"
+        address: 4
+        register_type: holding
+        count: 2
+        data_type: i32
+      - name: "f32_val"
+        address: 6
+        register_type: holding
+        count: 2
+        data_type: f32
+      - name: "bool_val"
+        address: 8
+        register_type: holding
+        count: 1
+        data_type: bool
+"#;
+        let config = load_config_from_str(yaml).unwrap();
+
+        let regs = &config.devices[0].registers;
+        assert_eq!(regs.len(), 6);
+
+        assert!(matches!(regs[0].data_type, DataType::U16));
+        assert!(matches!(regs[1].data_type, DataType::I16));
+        assert!(matches!(regs[2].data_type, DataType::U32));
+        assert!(matches!(regs[3].data_type, DataType::I32));
+        assert!(matches!(regs[4].data_type, DataType::F32));
+        assert!(matches!(regs[5].data_type, DataType::Bool));
+    }
+
+    #[test]
+    fn test_invalid_yaml() {
+        let yaml = "this is not valid yaml: [";
+        let result = load_config_from_str(yaml);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_mqtt_with_auth() {
+        let yaml = r#"
+server:
+  host: "0.0.0.0"
+  port: 3000
+  metrics_enabled: true
+mqtt:
+  host: "mqtt.secure.com"
+  port: 8883
+  client_id: "secure-client"
+  topic_prefix: "secure"
+  qos: 2
+  username: "admin"
+  password: "secret123"
+devices: []
+"#;
+        let config = load_config_from_str(yaml).unwrap();
+
+        assert_eq!(config.mqtt.username, Some("admin".to_string()));
+        assert_eq!(config.mqtt.password, Some("secret123".to_string()));
+    }
+
+    #[test]
+    fn test_config_serialization() {
+        let config = Config::default();
+        let yaml = serde_yaml::to_string(&config).unwrap();
+
+        // Should be able to deserialize back
+        let parsed: Config = serde_yaml::from_str(&yaml).unwrap();
+        assert_eq!(parsed.server.port, config.server.port);
+        assert_eq!(parsed.mqtt.host, config.mqtt.host);
+    }
+}
