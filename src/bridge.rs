@@ -40,12 +40,23 @@ impl Bridge {
         // Clone for the polling tasks to broadcast updates
         let update_broadcaster = api_state.update_tx.clone();
 
-        // Start MQTT publisher if configured
-        let _mqtt_publisher = if !self.config.mqtt.host.is_empty() {
-            Some(MqttPublisher::new(&self.config.mqtt).await?)
+        // Start MQTT publisher if enabled
+        if self.config.mqtt.enabled {
+            let mqtt_publisher = Arc::new(MqttPublisher::new(&self.config.mqtt).await?);
+            let mqtt_rx = api_state.subscribe();
+
+            // Spawn MQTT publishing loop
+            tokio::spawn(async move {
+                mqtt_publisher.start_publishing(mqtt_rx).await;
+            });
+
+            info!(
+                "MQTT publishing enabled: {}:{}/{}",
+                self.config.mqtt.host, self.config.mqtt.port, self.config.mqtt.topic_prefix
+            );
         } else {
-            None
-        };
+            info!("MQTT publishing disabled");
+        }
 
         // Start polling for each device with WebSocket broadcast
         for device in &self.config.devices {
@@ -137,7 +148,7 @@ async fn start_polling_with_broadcast(
                         device_map.insert(register.name.clone(), reg_value.clone());
                     }
 
-                    // Broadcast to WebSocket clients
+                    // Broadcast to WebSocket clients (and MQTT if enabled)
                     let update = RegisterUpdate {
                         device_id: device_id.clone(),
                         register_name: register.name.clone(),

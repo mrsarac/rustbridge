@@ -7,11 +7,13 @@ server:
   metrics_enabled: true
 
 mqtt:
+  enabled: true              # Enable MQTT publishing
   host: "localhost"
   port: 1883
   client_id: "rustbridge"
   topic_prefix: "rustbridge"
-  qos: 1
+  qos: 1                     # 0=AtMostOnce, 1=AtLeastOnce, 2=ExactlyOnce
+  retain: false              # Retain messages on broker
   # username: "user"
   # password: "secret"
 

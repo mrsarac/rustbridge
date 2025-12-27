@@ -27,6 +27,9 @@ pub struct ServerConfig {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct MqttConfig {
+    /// Enable MQTT publishing
+    #[serde(default)]
+    pub enabled: bool,
     /// MQTT broker host
     pub host: String,
     /// MQTT broker port
@@ -37,6 +40,9 @@ pub struct MqttConfig {
     pub topic_prefix: String,
     /// QoS level (0, 1, or 2)
     pub qos: u8,
+    /// Retain messages (for status updates)
+    #[serde(default)]
+    pub retain: bool,
     /// Username (optional)
     pub username: Option<String>,
     /// Password (optional)
@@ -148,11 +154,13 @@ impl Default for Config {
                 metrics_enabled: true,
             },
             mqtt: MqttConfig {
+                enabled: false,
                 host: "localhost".to_string(),
                 port: 1883,
                 client_id: "rustbridge".to_string(),
                 topic_prefix: "rustbridge".to_string(),
                 qos: 1,
+                retain: false,
                 username: None,
                 password: None,
             },
@@ -197,9 +205,11 @@ mod tests {
         assert_eq!(config.server.host, "0.0.0.0");
         assert_eq!(config.server.port, 3000);
         assert!(config.server.metrics_enabled);
+        assert!(!config.mqtt.enabled); // MQTT disabled by default
         assert_eq!(config.mqtt.host, "localhost");
         assert_eq!(config.mqtt.port, 1883);
         assert_eq!(config.mqtt.qos, 1);
+        assert!(!config.mqtt.retain);
         assert!(config.devices.is_empty());
     }
 
