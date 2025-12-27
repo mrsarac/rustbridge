@@ -15,7 +15,7 @@ readme = "README.md"
 tokio = { version = "1", features = ["full"] }
 
 # Modbus protocol
-tokio-modbus = "0.14"
+tokio-modbus = "0.17"
 
 # Serial port for RTU
 tokio-serial = "5.4"
