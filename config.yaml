@@ -65,23 +65,32 @@ devices:
         count: 1
         data_type: bool
 
-  # Example: Modbus RTU device (Week 2)
+  # Example: Modbus RTU device (Serial)
+  # Uncomment and adjust for your serial device
   # - id: "sensor-rtu"
-  #   name: "Temperature Sensor"
+  #   name: "RTU Temperature Sensor"
   #   device_type: rtu
   #   connection:
-  #     port: "/dev/ttyUSB0"
-  #     baud_rate: 9600
-  #     data_bits: 8
-  #     stop_bits: 1
-  #     parity: "none"
-  #     unit_id: 1
+  #     port: "/dev/ttyUSB0"      # Linux: /dev/ttyUSB0, macOS: /dev/cu.usbserial-*, Windows: COM1
+  #     baud_rate: 9600           # Common: 9600, 19200, 38400, 57600, 115200
+  #     data_bits: 8              # 5, 6, 7, or 8
+  #     stop_bits: 1              # 1 or 2
+  #     parity: "none"            # none, even, or odd
+  #     unit_id: 1                # Modbus slave address (1-247)
   #   poll_interval_ms: 2000
   #   registers:
-  #     - name: "temp"
+  #     - name: "temperature"
   #       address: 0
   #       register_type: input
   #       count: 1
   #       data_type: i16
   #       unit: "°C"
+  #       scale: 0.1
+  #
+  #     - name: "humidity"
+  #       address: 1
+  #       register_type: input
+  #       count: 1
+  #       data_type: u16
+  #       unit: "%"
   #       scale: 0.1
