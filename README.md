@@ -12,6 +12,23 @@ RustBridge is a high-performance, lightweight gateway that bridges industrial Mo
 
 > 🏭 *"Connecting legacy PLCs to the cloud, one register at a time."*
 
+## 🌐 Live Demo
+
+Try the API without installing anything:
+
+```bash
+# Health check
+curl https://rustbridge.mustafasarac.com/health
+
+# API info
+curl https://rustbridge.mustafasarac.com/api/info
+
+# Prometheus metrics
+curl https://rustbridge.mustafasarac.com/metrics
+```
+
+**Demo URL:** [rustbridge.mustafasarac.com](https://rustbridge.mustafasarac.com)
+
 ## ✨ Features
 
 - **🚀 High Performance** — Handles 1000+ registers per second
