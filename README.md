@@ -5,7 +5,6 @@
 [![Rust](https://img.shields.io/badge/rust-1.70%2B-orange.svg)](https://www.rust-lang.org/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Docker](https://img.shields.io/badge/docker-ghcr.io-blue.svg)](https://ghcr.io/mrsarac/rustbridge)
-[![codecov](https://codecov.io/gh/mrsarac/rustbridge/branch/main/graph/badge.svg)](https://codecov.io/gh/mrsarac/rustbridge)
 
 **Industrial Protocol Bridge - Modbus TCP/RTU to JSON/MQTT Gateway**
 
@@ -19,7 +18,8 @@ RustBridge is a high-performance, lightweight gateway that bridges industrial Mo
 - **🔌 Dual Protocol** — Modbus TCP and RTU (serial) support
 - **📡 MQTT Publisher** — Real-time data streaming to any MQTT broker
 - **🌐 REST API** — JSON endpoints for integration
-- **📊 Dashboard** — Built-in web UI for monitoring
+- **📊 WebSocket** — Real-time updates for dashboards
+- **📈 Prometheus Metrics** — Production-ready monitoring
 - **🐳 Docker Ready** — Single command deployment
 - **⚡ Edge Optimized** — Runs on Raspberry Pi, industrial gateways
 
@@ -28,10 +28,14 @@ RustBridge is a high-performance, lightweight gateway that bridges industrial Mo
 ### Option 1: Docker (Recommended)
 
 ```bash
+# Simple run
 docker run -d \
   -p 3000:3000 \
   -v ./config.yaml:/app/config.yaml \
   ghcr.io/mrsarac/rustbridge:latest
+
+# With Docker Compose (includes MQTT broker)
+docker compose up -d
 ```
 
 ### Option 2: Download Binary
@@ -39,6 +43,7 @@ docker run -d \
 Download the latest release for your platform from [GitHub Releases](https://github.com/mrsarac/rustbridge/releases):
 
 - **Linux x86_64**: `rustbridge-x86_64-unknown-linux-gnu`
+- **Linux ARM64**: `rustbridge-aarch64-unknown-linux-gnu`
 - **macOS Intel**: `rustbridge-x86_64-apple-darwin`
 - **macOS Apple Silicon**: `rustbridge-aarch64-apple-darwin`
 
@@ -50,11 +55,8 @@ chmod +x rustbridge-*
 ### Option 3: From Source
 
 ```bash
-# Clone the repository
 git clone https://github.com/mrsarac/rustbridge.git
 cd rustbridge
-
-# Build and run
 cargo build --release
 ./target/release/rustbridge
 ```
@@ -70,13 +72,16 @@ server:
   metrics_enabled: true
 
 mqtt:
+  enabled: true
   host: "localhost"
   port: 1883
   client_id: "rustbridge"
   topic_prefix: "rustbridge"
   qos: 1
+  retain: false
 
 devices:
+  # Modbus TCP device
   - id: "plc-01"
     name: "Main PLC"
     device_type: tcp
@@ -93,13 +98,26 @@ devices:
         data_type: u16
         unit: "°C"
         scale: 0.1
-      - name: "pressure"
-        address: 1
-        register_type: holding
+
+  # Modbus RTU (Serial) device
+  - id: "sensor-01"
+    name: "RTU Sensor"
+    device_type: rtu
+    connection:
+      port: "/dev/ttyUSB0"
+      baud_rate: 9600
+      data_bits: 8
+      stop_bits: 1
+      parity: "none"
+      unit_id: 1
+    poll_interval_ms: 2000
+    registers:
+      - name: "humidity"
+        address: 0
+        register_type: input
         count: 1
         data_type: u16
-        unit: "bar"
-        scale: 0.01
+        unit: "%"
 ```
 
 ## 🔌 API Endpoints
@@ -107,10 +125,13 @@ devices:
 | Endpoint | Method | Description |
 |----------|--------|-------------|
 | `/health` | GET | Health check |
+| `/metrics` | GET | Prometheus metrics |
+| `/api/info` | GET | API information |
 | `/api/devices` | GET | List all devices |
 | `/api/devices/:id` | GET | Get device details |
 | `/api/devices/:id/registers` | GET | Get all register values |
-| `/api/devices/:id/registers/:name` | GET | Get specific register |
+| `/api/devices/:id/registers/:name` | GET/POST | Get/Write register |
+| `/ws` | WebSocket | Real-time updates |
 
 ### Example Response
 
@@ -139,6 +160,60 @@ Example: `rustbridge/plc-01/temperature`
 }
 ```
 
+## 📊 Prometheus Metrics
+
+Available at `/metrics` when `metrics_enabled: true`:
+
+| Metric | Type | Description |
+|--------|------|-------------|
+| `rustbridge_register_reads_total` | Counter | Total register read attempts |
+| `rustbridge_read_duration_seconds` | Histogram | Read latency distribution |
+| `rustbridge_register_value` | Gauge | Current register values |
+| `rustbridge_errors_total` | Counter | Error count by type |
+| `rustbridge_device_connected` | Gauge | Device connection status |
+| `rustbridge_poll_cycle_seconds` | Histogram | Poll cycle duration |
+
+## 🚢 Production Deployment
+
+### Docker Compose (Recommended)
+
+```bash
+# Production stack
+docker compose up -d
+
+# With monitoring (Prometheus + Grafana)
+docker compose --profile monitoring up -d
+
+# With Modbus simulator for testing
+docker compose --profile dev up -d
+```
+
+Access:
+- RustBridge API: http://localhost:3000
+- Prometheus: http://localhost:9090 (with monitoring profile)
+- Grafana: http://localhost:3001 (admin/rustbridge)
+
+### systemd Service (Bare Metal)
+
+```bash
+# Install
+cd deploy
+sudo ./install.sh
+
+# Control
+sudo systemctl start rustbridge
+sudo systemctl status rustbridge
+sudo journalctl -u rustbridge -f
+```
+
+### Kubernetes / Helm
+
+```yaml
+# Coming soon - Helm chart
+helm repo add rustbridge https://mrsarac.github.io/rustbridge
+helm install rustbridge rustbridge/rustbridge
+```
+
 ## 🏗️ Architecture
 
 ```
@@ -147,19 +222,20 @@ Example: `rustbridge/plc-01/temperature`
 ├─────────────────────────────────────────────────────────────┤
 │                                                             │
 │  ┌─────────┐    ┌──────────┐    ┌────────┐    ┌─────────┐  │
-│  │ Modbus  │───▶│ Polling  │───▶│ Buffer │───▶│  MQTT   │  │
-│  │ Client  │    │ Engine   │    │        │    │ Publisher│  │
+│  │ Modbus  │───▶│ Polling  │───▶│Broadcast│──▶│  MQTT   │  │
+│  │TCP/RTU  │    │ Engine   │    │ Channel │   │Publisher│  │
 │  └─────────┘    └──────────┘    └────────┘    └─────────┘  │
-│       │                              │                      │
-│       │                              ▼                      │
-│       │                        ┌──────────┐                │
-│       └───────────────────────▶│ REST API │                │
-│                                └──────────┘                │
-│                                     │                       │
-│                                     ▼                       │
-│                               ┌──────────┐                 │
-│                               │Dashboard │                 │
-│                               └──────────┘                 │
+│                                      │                      │
+│                                      ▼                      │
+│                      ┌──────────────────────────┐          │
+│                      │      REST API + WS       │          │
+│                      │    (/api, /ws, /metrics) │          │
+│                      └──────────────────────────┘          │
+│                                      │                      │
+│                                      ▼                      │
+│                      ┌──────────────────────────┐          │
+│                      │   Prometheus + Grafana   │          │
+│                      └──────────────────────────┘          │
 └─────────────────────────────────────────────────────────────┘
 ```
 
@@ -177,14 +253,40 @@ cargo build --release
 
 # Run clippy
 cargo clippy
+
+# Format code
+cargo fmt
 ```
 
-## 📊 Metrics
+## 📁 Project Structure
 
-Prometheus metrics are exposed at `/metrics` when `metrics_enabled: true`.
+```
+rustbridge/
+├── src/
+│   ├── main.rs          # Entry point
+│   ├── lib.rs           # Library exports
+│   ├── config.rs        # Configuration parsing
+│   ├── bridge.rs        # Main orchestration
+│   ├── api/             # REST API + WebSocket
+│   ├── modbus/          # Modbus TCP/RTU client
+│   ├── mqtt/            # MQTT publisher
+│   └── metrics/         # Prometheus metrics
+├── deploy/
+│   ├── mosquitto/       # MQTT broker config
+│   ├── prometheus/      # Prometheus config
+│   ├── grafana/         # Grafana provisioning
+│   ├── systemd/         # systemd service file
+│   ├── install.sh       # Installation script
+│   └── uninstall.sh     # Uninstallation script
+├── config.yaml          # Example configuration
+├── Dockerfile           # Multi-stage build
+└── docker-compose.yml   # Full stack deployment
+```
 
 ## 🔒 Security
 
+- Non-root Docker container
+- systemd security hardening
 - TLS support for MQTT connections
 - API authentication (coming soon)
 - Rate limiting (coming soon)

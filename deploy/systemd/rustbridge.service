@@ -1,0 +1,72 @@
+# =============================================================================
+# RustBridge systemd Service
+# =============================================================================
+#
+# Installation:
+#   1. Copy binary:     sudo cp rustbridge /usr/local/bin/
+#   2. Copy config:     sudo cp config.yaml /etc/rustbridge/
+#   3. Copy service:    sudo cp rustbridge.service /etc/systemd/system/
+#   4. Create user:     sudo useradd -r -s /bin/false rustbridge
+#   5. Set permissions: sudo chown -R rustbridge:rustbridge /etc/rustbridge
+#   6. Enable service:  sudo systemctl enable rustbridge
+#   7. Start service:   sudo systemctl start rustbridge
+#
+# Commands:
+#   Status:   sudo systemctl status rustbridge
+#   Logs:     sudo journalctl -u rustbridge -f
+#   Restart:  sudo systemctl restart rustbridge
+#
+# =============================================================================
+
+[Unit]
+Description=RustBridge - Industrial Protocol Bridge
+Documentation=https://github.com/mrsarac/rustbridge
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=rustbridge
+Group=rustbridge
+
+# Binary and config
+ExecStart=/usr/local/bin/rustbridge
+WorkingDirectory=/etc/rustbridge
+
+# Environment
+Environment=RUST_LOG=info
+Environment=RUSTBRIDGE_CONFIG=/etc/rustbridge/config.yaml
+
+# Restart policy
+Restart=always
+RestartSec=5
+StartLimitIntervalSec=60
+StartLimitBurst=3
+
+# Security hardening
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+PrivateTmp=true
+PrivateDevices=false
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+RestrictRealtime=true
+RestrictSUIDSGID=true
+
+# Allow serial port access for RTU mode
+SupplementaryGroups=dialout
+
+# Resource limits
+LimitNOFILE=65535
+MemoryMax=512M
+CPUQuota=100%
+
+# Logging
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=rustbridge
+
+[Install]
+WantedBy=multi-user.target

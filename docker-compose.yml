@@ -1,6 +1,20 @@
-version: '3.8'
+# =============================================================================
+# RustBridge Docker Compose
+# Production-ready stack with monitoring
+# =============================================================================
+#
+# Usage:
+#   Production:  docker compose up -d
+#   Development: docker compose --profile dev up -d
+#   Monitoring:  docker compose --profile monitoring up -d
+#   Full Stack:  docker compose --profile dev --profile monitoring up -d
+#
+# =============================================================================
 
 services:
+  # ---------------------------------------------------------------------------
+  # RustBridge - Main Application
+  # ---------------------------------------------------------------------------
   rustbridge:
     build: .
     image: mrsarac/rustbridge:latest
@@ -13,11 +27,29 @@ services:
       - RUST_LOG=info
       - RUSTBRIDGE_CONFIG=/app/config.yaml
     depends_on:
-      - mosquitto
+      mosquitto:
+        condition: service_healthy
     restart: unless-stopped
     networks:
       - rustbridge-net
+    deploy:
+      resources:
+        limits:
+          cpus: '1'
+          memory: 256M
+        reservations:
+          cpus: '0.25'
+          memory: 64M
+    healthcheck:
+      test: ["CMD", "curl", "-sf", "http://localhost:3000/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
 
+  # ---------------------------------------------------------------------------
+  # Mosquitto MQTT Broker
+  # ---------------------------------------------------------------------------
   mosquitto:
     image: eclipse-mosquitto:2
     container_name: rustbridge-mqtt
@@ -25,14 +57,21 @@ services:
       - "1883:1883"
       - "9001:9001"
     volumes:
-      - ./mosquitto/config:/mosquitto/config:ro
+      - ./deploy/mosquitto/mosquitto.conf:/mosquitto/config/mosquitto.conf:ro
       - mosquitto-data:/mosquitto/data
       - mosquitto-log:/mosquitto/log
     restart: unless-stopped
     networks:
       - rustbridge-net
+    healthcheck:
+      test: ["CMD", "mosquitto_sub", "-t", "$$SYS/#", "-C", "1", "-W", "3"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
 
-  # Optional: Modbus simulator for testing
+  # ---------------------------------------------------------------------------
+  # Modbus Simulator (Development only)
+  # ---------------------------------------------------------------------------
   modbus-simulator:
     image: oitc/modbus-server:latest
     container_name: rustbridge-modbus-sim
@@ -46,9 +85,56 @@ services:
     profiles:
       - dev
 
+  # ---------------------------------------------------------------------------
+  # Prometheus (Monitoring profile)
+  # ---------------------------------------------------------------------------
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: rustbridge-prometheus
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./deploy/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus-data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--storage.tsdb.retention.time=15d'
+      - '--web.enable-lifecycle'
+    restart: unless-stopped
+    networks:
+      - rustbridge-net
+    profiles:
+      - monitoring
+
+  # ---------------------------------------------------------------------------
+  # Grafana (Monitoring profile)
+  # ---------------------------------------------------------------------------
+  grafana:
+    image: grafana/grafana:latest
+    container_name: rustbridge-grafana
+    ports:
+      - "3001:3000"
+    volumes:
+      - ./deploy/grafana/provisioning:/etc/grafana/provisioning:ro
+      - grafana-data:/var/lib/grafana
+    environment:
+      - GF_SECURITY_ADMIN_USER=admin
+      - GF_SECURITY_ADMIN_PASSWORD=rustbridge
+      - GF_USERS_ALLOW_SIGN_UP=false
+    restart: unless-stopped
+    networks:
+      - rustbridge-net
+    profiles:
+      - monitoring
+    depends_on:
+      - prometheus
+
 volumes:
   mosquitto-data:
   mosquitto-log:
+  prometheus-data:
+  grafana-data:
 
 networks:
   rustbridge-net:

@@ -1,0 +1,22 @@
+# =============================================================================
+# Prometheus Configuration for RustBridge
+# =============================================================================
+
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+  external_labels:
+    monitor: 'rustbridge'
+
+scrape_configs:
+  # RustBridge metrics
+  - job_name: 'rustbridge'
+    static_configs:
+      - targets: ['rustbridge:3000']
+    metrics_path: /metrics
+    scrape_interval: 10s
+
+  # Prometheus self-monitoring
+  - job_name: 'prometheus'
+    static_configs:
+      - targets: ['localhost:9090']
