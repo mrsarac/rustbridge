@@ -95,7 +95,17 @@ impl Bridge {
         });
 
         // Start API server
-        let app = api::create_router(api_state);
+        let app = api::create_router(api_state, self.config.auth.clone());
+
+        // Log authentication status
+        if self.config.auth.enabled {
+            info!(
+                "API authentication enabled with {} API key(s)",
+                self.config.auth.api_keys.len()
+            );
+        } else {
+            info!("API authentication disabled (open access)");
+        }
 
         let addr: SocketAddr =
             format!("{}:{}", self.config.server.host, self.config.server.port).parse()?;

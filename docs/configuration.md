@@ -43,6 +43,19 @@ mqtt:
   client_key: "/path/to/client.key"
 
 # =============================================================================
+# API AUTHENTICATION (Optional)
+# =============================================================================
+auth:
+  enabled: false             # Enable API key authentication
+  api_keys:                  # List of valid API keys
+    - "your-secret-key-1"
+    - "your-secret-key-2"
+  exclude_paths:             # Paths that don't require authentication
+    - "/health"
+    - "/metrics"
+    - "/public/*"            # Wildcard supported
+
+# =============================================================================
 # DEVICE CONFIGURATION
 # =============================================================================
 devices:

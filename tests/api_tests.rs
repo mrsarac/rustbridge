@@ -13,7 +13,17 @@ use tokio::sync::RwLock;
 use tower::ServiceExt;
 
 use rustbridge::api::{create_router, ApiState};
+use rustbridge::config::AuthConfig;
 use rustbridge::modbus::reader::{RegisterStore, RegisterValue};
+
+/// Helper to create a disabled auth config for tests
+fn disabled_auth() -> AuthConfig {
+    AuthConfig {
+        enabled: false,
+        api_keys: vec![],
+        exclude_paths: vec!["/health".to_string(), "/metrics".to_string()],
+    }
+}
 
 /// Helper to create a test API state
 fn create_test_state() -> ApiState {
@@ -111,7 +121,7 @@ async fn post_json(
 #[tokio::test]
 async fn test_health_endpoint() {
     let state = create_test_state();
-    let app = create_router(state);
+    let app = create_router(state, disabled_auth());
 
     let (status, json) = get_json(app, "/health").await;
 
@@ -123,7 +133,7 @@ async fn test_health_endpoint() {
 #[tokio::test]
 async fn test_health_version_format() {
     let state = create_test_state();
-    let app = create_router(state);
+    let app = create_router(state, disabled_auth());
 
     let (status, json) = get_json(app, "/health").await;
 
@@ -155,7 +165,7 @@ async fn test_health_version_format() {
 #[tokio::test]
 async fn test_api_info_endpoint() {
     let state = create_test_state();
-    let app = create_router(state);
+    let app = create_router(state, disabled_auth());
 
     let (status, json) = get_json(app, "/api/info").await;
 
@@ -177,7 +187,7 @@ async fn test_api_info_endpoint() {
 #[tokio::test]
 async fn test_list_devices_empty() {
     let state = create_test_state();
-    let app = create_router(state);
+    let app = create_router(state, disabled_auth());
 
     let (status, json) = get_json(app, "/api/devices").await;
 
@@ -191,7 +201,7 @@ async fn test_list_devices_empty() {
 async fn test_list_devices_with_data() {
     let state = create_test_state();
     populate_test_data(&state).await;
-    let app = create_router(state);
+    let app = create_router(state, disabled_auth());
 
     let (status, json) = get_json(app, "/api/devices").await;
 
@@ -211,7 +221,7 @@ async fn test_list_devices_with_data() {
 async fn test_get_device_found() {
     let state = create_test_state();
     populate_test_data(&state).await;
-    let app = create_router(state);
+    let app = create_router(state, disabled_auth());
 
     let (status, json) = get_json(app, "/api/devices/plc-001").await;
 
@@ -226,7 +236,7 @@ async fn test_get_device_found() {
 #[tokio::test]
 async fn test_get_device_not_found() {
     let state = create_test_state();
-    let app = create_router(state);
+    let app = create_router(state, disabled_auth());
 
     let response = app
         .oneshot(
@@ -251,7 +261,7 @@ async fn test_get_device_not_found() {
 async fn test_device_register_count() {
     let state = create_test_state();
     populate_test_data(&state).await;
-    let app = create_router(state);
+    let app = create_router(state, disabled_auth());
 
     let (status, json) = get_json(app, "/api/devices").await;
 
@@ -275,7 +285,7 @@ async fn test_device_register_count() {
 async fn test_device_has_last_update() {
     let state = create_test_state();
     populate_test_data(&state).await;
-    let app = create_router(state);
+    let app = create_router(state, disabled_auth());
 
     let (status, json) = get_json(app, "/api/devices").await;
 
@@ -299,7 +309,7 @@ async fn test_device_has_last_update() {
 async fn test_get_registers() {
     let state = create_test_state();
     populate_test_data(&state).await;
-    let app = create_router(state);
+    let app = create_router(state, disabled_auth());
 
     let (status, json) = get_json(app, "/api/devices/plc-001/registers").await;
 
@@ -321,7 +331,7 @@ async fn test_get_registers() {
 async fn test_get_single_register() {
     let state = create_test_state();
     populate_test_data(&state).await;
-    let app = create_router(state);
+    let app = create_router(state, disabled_auth());
 
     let (status, json) = get_json(app, "/api/devices/plc-001/registers/temperature").await;
 
@@ -335,7 +345,7 @@ async fn test_get_single_register() {
 async fn test_get_register_not_found() {
     let state = create_test_state();
     populate_test_data(&state).await;
-    let app = create_router(state);
+    let app = create_router(state, disabled_auth());
 
     let response = app
         .oneshot(
@@ -360,7 +370,7 @@ async fn test_get_register_not_found() {
 async fn test_register_raw_values() {
     let state = create_test_state();
     populate_test_data(&state).await;
-    let app = create_router(state);
+    let app = create_router(state, disabled_auth());
 
     let (status, json) = get_json(app, "/api/devices/plc-001/registers/temperature").await;
 
@@ -378,7 +388,7 @@ async fn test_register_raw_values() {
 #[tokio::test]
 async fn test_write_register_device_not_found() {
     let state = create_test_state();
-    let app = create_router(state);
+    let app = create_router(state, disabled_auth());
 
     let (status, json) = post_json(
         app,
@@ -395,7 +405,7 @@ async fn test_write_register_device_not_found() {
 async fn test_write_register_not_found() {
     let state = create_test_state();
     populate_test_data(&state).await;
-    let app = create_router(state);
+    let app = create_router(state, disabled_auth());
 
     let (status, json) = post_json(
         app,
@@ -415,7 +425,7 @@ async fn test_write_register_not_found() {
 #[tokio::test]
 async fn test_websocket_endpoint_exists() {
     let state = create_test_state();
-    let app = create_router(state);
+    let app = create_router(state, disabled_auth());
 
     // Test that /ws endpoint exists and responds
     // Note: Full WebSocket upgrade requires a real WebSocket client
@@ -452,7 +462,7 @@ async fn test_websocket_endpoint_exists() {
 #[tokio::test]
 async fn test_error_response_structure() {
     let state = create_test_state();
-    let app = create_router(state);
+    let app = create_router(state, disabled_auth());
 
     let response = app
         .oneshot(
@@ -472,4 +482,137 @@ async fn test_error_response_structure() {
     // All error responses should have these fields
     assert!(json["error"].is_string());
     assert!(json["code"].is_number());
+}
+
+// ============================================================================
+// API Key Authentication Tests
+// ============================================================================
+
+/// Helper to create an enabled auth config for tests
+fn enabled_auth_with_keys(keys: Vec<&str>) -> AuthConfig {
+    AuthConfig {
+        enabled: true,
+        api_keys: keys.iter().map(|s| s.to_string()).collect(),
+        exclude_paths: vec!["/health".to_string(), "/metrics".to_string()],
+    }
+}
+
+/// Helper to make a GET request with API key header
+async fn get_json_with_key(
+    app: axum::Router,
+    uri: &str,
+    api_key: Option<&str>,
+) -> (StatusCode, serde_json::Value) {
+    let mut builder = Request::builder().uri(uri);
+
+    if let Some(key) = api_key {
+        builder = builder.header("X-API-Key", key);
+    }
+
+    let response = app
+        .oneshot(builder.body(Body::empty()).unwrap())
+        .await
+        .unwrap();
+
+    let status = response.status();
+    let body = response.into_body().collect().await.unwrap().to_bytes();
+    let json: serde_json::Value = serde_json::from_slice(&body).unwrap_or(serde_json::json!({}));
+
+    (status, json)
+}
+
+#[tokio::test]
+async fn test_auth_disabled_allows_all_requests() {
+    let state = create_test_state();
+    populate_test_data(&state).await;
+    let app = create_router(state, disabled_auth());
+
+    // Should succeed without API key when auth is disabled
+    let (status, _) = get_json_with_key(app, "/api/devices", None).await;
+    assert_eq!(status, StatusCode::OK);
+}
+
+#[tokio::test]
+async fn test_auth_enabled_rejects_missing_key() {
+    let state = create_test_state();
+    populate_test_data(&state).await;
+    let app = create_router(state, enabled_auth_with_keys(vec!["secret-key"]));
+
+    // Should fail without API key
+    let (status, json) = get_json_with_key(app, "/api/devices", None).await;
+    assert_eq!(status, StatusCode::UNAUTHORIZED);
+    assert_eq!(json["error"], "unauthorized");
+    assert_eq!(json["message"], "Missing X-API-Key header");
+}
+
+#[tokio::test]
+async fn test_auth_enabled_rejects_invalid_key() {
+    let state = create_test_state();
+    populate_test_data(&state).await;
+    let app = create_router(state, enabled_auth_with_keys(vec!["secret-key"]));
+
+    // Should fail with wrong API key
+    let (status, json) = get_json_with_key(app, "/api/devices", Some("wrong-key")).await;
+    assert_eq!(status, StatusCode::UNAUTHORIZED);
+    assert_eq!(json["error"], "unauthorized");
+    assert_eq!(json["message"], "Invalid API key");
+}
+
+#[tokio::test]
+async fn test_auth_enabled_accepts_valid_key() {
+    let state = create_test_state();
+    populate_test_data(&state).await;
+    let app = create_router(state, enabled_auth_with_keys(vec!["secret-key"]));
+
+    // Should succeed with valid API key
+    let (status, json) = get_json_with_key(app, "/api/devices", Some("secret-key")).await;
+    assert_eq!(status, StatusCode::OK);
+    assert_eq!(json["count"], 2);
+}
+
+#[tokio::test]
+async fn test_auth_multiple_keys() {
+    let state = create_test_state();
+    populate_test_data(&state).await;
+    let app = create_router(state, enabled_auth_with_keys(vec!["key1", "key2", "key3"]));
+
+    // All keys should work
+    let (status, _) = get_json_with_key(app.clone(), "/api/devices", Some("key1")).await;
+    assert_eq!(status, StatusCode::OK);
+
+    let (status, _) = get_json_with_key(app.clone(), "/api/devices", Some("key2")).await;
+    assert_eq!(status, StatusCode::OK);
+
+    let (status, _) = get_json_with_key(app, "/api/devices", Some("key3")).await;
+    assert_eq!(status, StatusCode::OK);
+}
+
+#[tokio::test]
+async fn test_auth_excluded_paths_no_key_required() {
+    let state = create_test_state();
+    let app = create_router(state, enabled_auth_with_keys(vec!["secret-key"]));
+
+    // /health should work without key (excluded path)
+    let (status, _) = get_json_with_key(app.clone(), "/health", None).await;
+    assert_eq!(status, StatusCode::OK);
+
+    // /metrics should work without key (excluded path)
+    let (status, _) = get_json_with_key(app, "/metrics", None).await;
+    // Metrics returns 503 if no handle, but not 401
+    assert_ne!(status, StatusCode::UNAUTHORIZED);
+}
+
+#[tokio::test]
+async fn test_auth_protected_endpoint_requires_key() {
+    let state = create_test_state();
+    populate_test_data(&state).await;
+    let app = create_router(state, enabled_auth_with_keys(vec!["secret-key"]));
+
+    // /api/info should require key (not in excluded paths)
+    let (status, _) = get_json_with_key(app.clone(), "/api/info", None).await;
+    assert_eq!(status, StatusCode::UNAUTHORIZED);
+
+    // But works with valid key
+    let (status, _) = get_json_with_key(app, "/api/info", Some("secret-key")).await;
+    assert_eq!(status, StatusCode::OK);
 }

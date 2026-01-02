@@ -11,8 +11,44 @@ pub struct Config {
     pub server: ServerConfig,
     /// MQTT broker configuration
     pub mqtt: MqttConfig,
+    /// API authentication configuration
+    #[serde(default)]
+    pub auth: AuthConfig,
     /// List of Modbus devices
     pub devices: Vec<DeviceConfig>,
+}
+
+/// API Authentication configuration
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct AuthConfig {
+    /// Enable API key authentication
+    #[serde(default)]
+    pub enabled: bool,
+    /// List of valid API keys
+    #[serde(default)]
+    pub api_keys: Vec<String>,
+    /// Paths excluded from authentication (e.g., /health, /metrics)
+    #[serde(default = "AuthConfig::default_exclude_paths")]
+    pub exclude_paths: Vec<String>,
+}
+
+impl Default for AuthConfig {
+    fn default() -> Self {
+        Self {
+            enabled: false,
+            api_keys: vec![],
+            exclude_paths: Self::default_exclude_paths(),
+        }
+    }
+}
+
+impl AuthConfig {
+    fn default_exclude_paths() -> Vec<String> {
+        vec![
+            "/health".to_string(),
+            "/metrics".to_string(),
+        ]
+    }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -164,6 +200,7 @@ impl Default for Config {
                 username: None,
                 password: None,
             },
+            auth: AuthConfig::default(),
             devices: vec![],
         }
     }

@@ -3,7 +3,10 @@
 //! Provides REST endpoints for reading/writing Modbus registers
 //! and WebSocket for real-time register updates.
 
+pub mod auth;
+
 use axum::{
+    middleware,
     extract::{
         ws::{Message, WebSocket, WebSocketUpgrade},
         Path, State,
@@ -20,7 +23,10 @@ use std::sync::Arc;
 use tokio::sync::broadcast;
 use tracing::{debug, error, info, warn};
 
+use crate::config::AuthConfig;
 use crate::modbus::reader::RegisterStore;
+
+use self::auth::{api_key_auth, AuthState};
 
 /// Broadcast channel capacity for WebSocket updates
 const BROADCAST_CAPACITY: usize = 1024;
@@ -91,7 +97,9 @@ pub struct WriteRequest {
 }
 
 /// Create the API router
-pub fn create_router(state: ApiState) -> Router {
+pub fn create_router(state: ApiState, auth_config: AuthConfig) -> Router {
+    let auth_state = Arc::new(AuthState::new(auth_config));
+
     Router::new()
         // Health & Info
         .route("/health", get(health))
@@ -114,6 +122,11 @@ pub fn create_router(state: ApiState) -> Router {
         )
         // WebSocket
         .route("/ws", get(ws_handler))
+        // Apply API key authentication middleware
+        .layer(middleware::from_fn_with_state(
+            auth_state,
+            api_key_auth,
+        ))
         .with_state(Arc::new(state))
 }
 

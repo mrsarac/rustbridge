@@ -111,6 +111,16 @@ mqtt:
   qos: 1
   retain: false
 
+# API Authentication (optional)
+auth:
+  enabled: true
+  api_keys:
+    - "your-secret-key-1"
+    - "your-secret-key-2"
+  exclude_paths:
+    - "/health"
+    - "/metrics"
+
 devices:
   # Modbus TCP device
   - id: "plc-01"
@@ -336,11 +346,33 @@ rustbridge/
 
 ## 🔒 Security
 
+- **🔑 API Key Authentication** — Secure endpoints with `X-API-Key` header
 - Non-root Docker container
 - systemd security hardening
 - TLS support for MQTT connections
-- API authentication (coming soon)
 - Rate limiting (coming soon)
+
+### API Authentication
+
+Enable API key authentication in your `config.yaml`:
+
+```yaml
+auth:
+  enabled: true
+  api_keys:
+    - "your-secret-api-key"
+  exclude_paths:
+    - "/health"
+    - "/metrics"
+```
+
+Then include the key in requests:
+
+```bash
+curl -H "X-API-Key: your-secret-api-key" https://rustbridge.example.com/api/devices
+```
+
+> 📖 See [API Reference](docs/api-reference.md) for authentication details.
 
 ## 📜 License
 

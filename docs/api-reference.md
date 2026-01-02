@@ -10,7 +10,64 @@ http://localhost:3000
 
 ## Authentication
 
-Currently, RustBridge does not require authentication. API authentication is planned for v1.1.0.
+RustBridge supports optional API key authentication. When enabled, all API endpoints (except excluded paths) require a valid API key.
+
+### Configuration
+
+Enable authentication in `config.yaml`:
+
+```yaml
+auth:
+  enabled: true
+  api_keys:
+    - "your-secret-key-1"
+    - "your-secret-key-2"
+  exclude_paths:
+    - "/health"
+    - "/metrics"
+```
+
+### Using API Keys
+
+Include the API key in the `X-API-Key` header:
+
+```bash
+# With authentication
+curl -H "X-API-Key: your-secret-key-1" http://localhost:3000/api/devices
+
+# Excluded paths work without authentication
+curl http://localhost:3000/health
+curl http://localhost:3000/metrics
+```
+
+### Authentication Errors
+
+**Missing API Key (401 Unauthorized):**
+```json
+{
+  "error": "unauthorized",
+  "message": "Missing X-API-Key header"
+}
+```
+
+**Invalid API Key (401 Unauthorized):**
+```json
+{
+  "error": "unauthorized",
+  "message": "Invalid API key"
+}
+```
+
+### Wildcard Paths
+
+Exclude paths support wildcards:
+
+```yaml
+auth:
+  exclude_paths:
+    - "/health"
+    - "/public/*"    # Matches /public/info, /public/docs/api, etc.
+```
 
 ## Response Format
 
