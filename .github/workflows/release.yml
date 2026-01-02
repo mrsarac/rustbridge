@@ -49,12 +49,12 @@ jobs:
             ### Docker
 
             ```bash
-            docker pull ghcr.io/mrsarac/rustbridge:${{ steps.get_version.outputs.VERSION }}
+            docker pull ghcr.io/neurabytelabs/rustbridge:${{ steps.get_version.outputs.VERSION }}
             ```
 
             ### Changelog
 
-            See [CHANGELOG.md](https://github.com/mrsarac/rustbridge/blob/main/CHANGELOG.md)
+            See [CHANGELOG.md](https://github.com/neurabytelabs/rustbridge/blob/main/CHANGELOG.md)
           draft: false
           prerelease: false
 
@@ -139,13 +139,13 @@ jobs:
           context: .
           push: true
           tags: |
-            ghcr.io/mrsarac/rustbridge:${{ steps.get_version.outputs.VERSION }}
-            ghcr.io/mrsarac/rustbridge:latest
+            ghcr.io/neurabytelabs/rustbridge:${{ steps.get_version.outputs.VERSION }}
+            ghcr.io/neurabytelabs/rustbridge:latest
           cache-from: type=gha
           cache-to: type=gha,mode=max
           labels: |
             org.opencontainers.image.title=RustBridge
             org.opencontainers.image.description=Industrial Protocol Bridge - Modbus TCP/RTU to JSON/MQTT Gateway
             org.opencontainers.image.version=${{ steps.get_version.outputs.VERSION }}
-            org.opencontainers.image.source=https://github.com/mrsarac/rustbridge
+            org.opencontainers.image.source=https://github.com/neurabytelabs/rustbridge
             org.opencontainers.image.licenses=MIT
