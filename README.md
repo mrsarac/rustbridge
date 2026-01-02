@@ -1,10 +1,10 @@
 # 🌉 RustBridge
 
-[![CI](https://github.com/mrsarac/rustbridge/actions/workflows/ci.yml/badge.svg)](https://github.com/mrsarac/rustbridge/actions/workflows/ci.yml)
-[![Release](https://github.com/mrsarac/rustbridge/actions/workflows/release.yml/badge.svg)](https://github.com/mrsarac/rustbridge/actions/workflows/release.yml)
+[![CI](https://github.com/neurabytelabs/rustbridge/actions/workflows/ci.yml/badge.svg)](https://github.com/neurabytelabs/rustbridge/actions/workflows/ci.yml)
+[![Release](https://github.com/neurabytelabs/rustbridge/actions/workflows/release.yml/badge.svg)](https://github.com/neurabytelabs/rustbridge/actions/workflows/release.yml)
 [![Rust](https://img.shields.io/badge/rust-1.70%2B-orange.svg)](https://www.rust-lang.org/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Docker](https://img.shields.io/badge/docker-ghcr.io-blue.svg)](https://ghcr.io/mrsarac/rustbridge)
+[![Docker](https://img.shields.io/badge/docker-ghcr.io-blue.svg)](https://ghcr.io/neurabytelabs/rustbridge)
 
 **Industrial Protocol Bridge - Modbus TCP/RTU to JSON/MQTT Gateway**
 
@@ -63,7 +63,7 @@ curl https://rustbridge.mustafasarac.com/metrics
 docker run -d \
   -p 3000:3000 \
   -v ./config.yaml:/app/config.yaml \
-  ghcr.io/mrsarac/rustbridge:latest
+  ghcr.io/neurabytelabs/rustbridge:latest
 
 # With Docker Compose (includes MQTT broker)
 docker compose up -d
@@ -71,7 +71,7 @@ docker compose up -d
 
 ### Option 2: Download Binary
 
-Download the latest release for your platform from [GitHub Releases](https://github.com/mrsarac/rustbridge/releases):
+Download the latest release for your platform from [GitHub Releases](https://github.com/neurabytelabs/rustbridge/releases):
 
 - **Linux x86_64**: `rustbridge-x86_64-unknown-linux-gnu`
 - **Linux ARM64**: `rustbridge-aarch64-unknown-linux-gnu`
@@ -86,7 +86,7 @@ chmod +x rustbridge-*
 ### Option 3: From Source
 
 ```bash
-git clone https://github.com/mrsarac/rustbridge.git
+git clone https://github.com/neurabytelabs/rustbridge.git
 cd rustbridge
 cargo build --release
 ./target/release/rustbridge
@@ -249,7 +249,7 @@ sudo journalctl -u rustbridge -f
 
 ```yaml
 # Coming soon - Helm chart
-helm repo add rustbridge https://mrsarac.github.io/rustbridge
+helm repo add rustbridge https://neurabytelabs.github.io/rustbridge
 helm install rustbridge rustbridge/rustbridge
 ```
 
@@ -352,7 +352,7 @@ Contributions are welcome! Please read our contributing guidelines.
 
 ## 📞 Support
 
-- GitHub Issues: [github.com/mrsarac/rustbridge/issues](https://github.com/mrsarac/rustbridge/issues)
+- GitHub Issues: [github.com/neurabytelabs/rustbridge/issues](https://github.com/neurabytelabs/rustbridge/issues)
 - Email: mrsarac@gmail.com
 
 ---
